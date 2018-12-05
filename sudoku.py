@@ -68,20 +68,19 @@ class Solver(object):
         for row in solution:
             print(row)
 
-    def is_solved(self, solution):
+    @classmethod
+    def is_solved(cls, solution):
         for row in solution:
             for element in row:
                 if element is "0":
                     return False
         return True
 
-    def search(self, possibilities, solution):
-        most_deducted_square = self.get_square_with_least_possibilities(possibilities, solution)
+    @classmethod
+    def search(cls, possibilities, solution):
+        most_deducted_square = cls.get_square_with_least_possibilities(possibilities, solution)
         # for each possibility for this square
         for possibility in most_deducted_square[2]:
-
-            # try assigning this possibility to the solution
-            solution[most_deducted_square[0]][most_deducted_square[1]] = possibility
             try:
                 # and eliminate the other possibilities
                 solution_copy = deepcopy(solution)
@@ -92,52 +91,52 @@ class Solver(object):
                 # print(most_deducted_square)
                 # print(possibility)
                 # print("------")
-                for other_possibility in most_deducted_square[2]:
-                    if other_possibility != possibility:
-                        self.eliminate(most_deducted_square[0], most_deducted_square[1], other_possibility, possibilities_copy, solution_copy)
-                        if self.is_solved(solution_copy):
-                            print()
-                            self.sudoku_seed = solution_copy
-                            self.print_sudoku(solution_copy)
-                            return
-                        else:
-                            self.search(possibilities_copy, solution_copy)
-                            return
+                cls.assign(most_deducted_square[0], most_deducted_square[1], possibility, possibilities_copy,
+                           solution_copy)
+                if cls.is_solved(solution_copy):
+                    return solution_copy
+                else:
+                    return cls.search(possibilities_copy, solution_copy)
             except ValueError:
                 continue
-        #print("end of search")
-        #print(most_deducted_square)
-        #print(most_deducted_square[2])
-        #print("----")
+        # print("end of search")
+        # print(most_deducted_square)
+        # print(most_deducted_square[2])
+        # print("----")
         raise ValueError
+
+    @classmethod
+    def assign(cls, row, col, element, possibilities: List[List[Set[str]]], solution):
+        # assign the digit as the solution
+        solution[row][col] = element
+        # eliminate the rest of the digits from possibilities
+        digits_to_discard = possibilities[row][col].difference({element})
+        for digit in digits_to_discard:
+            cls.eliminate(row, col, digit, possibilities, solution)
 
     def solve(self):
         for row in range(9):
             for col in range(9):
                 if self.sudoku_seed[row][col] != "0":
-                    initial_possibilities = self.possibilities[row][col].copy()
-                    for possibility in initial_possibilities:
-                        if possibility != self.sudoku_seed[row][col]:
-                            self.eliminate(row, col, possibility, self.possibilities, self.sudoku_seed)
-        print("After deducting")
-        self.print_sudoku(self.sudoku_seed)
+                    self.assign(row, col, self.sudoku_seed[row][col], self.possibilities, self.sudoku_seed)
         if not self.is_solved(self.sudoku_seed):
             # get square with least possibilities greater than 1
-            self.search(deepcopy(self.possibilities), deepcopy(self.sudoku_seed))
-        else:
-            print()
-            self.print_sudoku()
+            self.sudoku_seed = self.search(deepcopy(self.possibilities), deepcopy(self.sudoku_seed))
 
-    def get_square_with_least_possibilities(self, possibilities, solution):
-        squares_list = []
+    @classmethod
+    def get_square_with_least_possibilities(cls, possibilities, solution):
+        square_least_possibilities = tuple()
+        least_possibilities = 10
         for row in range(9):
             for col in range(9):
                 if solution[row][col] == "0":
-                    squares_list.append((row, col, possibilities[row][col].copy()))
-        sorted(squares_list, key=lambda x: x[2])
-        return squares_list[0]
+                    if len(possibilities[row][col]) < least_possibilities:
+                        square_least_possibilities = (row, col, possibilities[row][col].copy())
+                        least_possibilities = len(possibilities[row][col])
+        return square_least_possibilities
 
-    def eliminate(self, row, col, element, possibilities, solution):
+    @classmethod
+    def eliminate(cls, row, col, element, possibilities, solution):
         if element not in possibilities[row][col]:
             return
 
@@ -149,7 +148,7 @@ class Solver(object):
         if len(possibilities[row][col]) == 1:
             neighbors, _ = Solver.neighbors[(row, col)]
             for neighbor in neighbors:
-                self.eliminate(neighbor[0], neighbor[1], min(possibilities[row][col]), possibilities, solution)
+                cls.eliminate(neighbor[0], neighbor[1], min(possibilities[row][col]), possibilities, solution)
 
         _, neighborhoods = Solver.neighbors[(row, col)]
         for neighborhood in neighborhoods:
@@ -162,10 +161,7 @@ class Solver(object):
             if len(remaining_squares_for_element) == 1:
                 square_for_element = remaining_squares_for_element[0]
                 solution[square_for_element[0]][square_for_element[1]] = element
-                initial_possibilities = possibilities[square_for_element[0]][square_for_element[1]].copy()
-                for possibility in initial_possibilities:
-                    if possibility != solution[square_for_element[0]][square_for_element[1]]:
-                        self.eliminate(square_for_element[0], square_for_element[1], possibility, possibilities, solution)
+                cls.assign(square_for_element[0], square_for_element[1], element, possibilities, solution)
 
 
 # define neighbors here because the class Solver can't be resolved if we're still in the middle of defining the class
@@ -185,8 +181,11 @@ def main():
             print(sudoku_id)
             sudoku_solver = Solver(sudoku_seed_text=rows)
             sudoku_solver.print_sudoku()
+            print()
             sudoku_solver.solve()
-            first_three_digits = sudoku_solver.sudoku_seed[0][0] + sudoku_solver.sudoku_seed[0][1] + sudoku_solver.sudoku_seed[0][2]
+            sudoku_solver.print_sudoku()
+            first_three_digits = sudoku_solver.sudoku_seed[0][0] + sudoku_solver.sudoku_seed[0][1] + \
+                                 sudoku_solver.sudoku_seed[0][2]
             three_digit_number = int(first_three_digits)
             sum_of_first_three_digits += three_digit_number
             print()
