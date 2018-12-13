@@ -1,6 +1,8 @@
 import sys
 from typing import List
 from typing import Set
+from typing import Dict
+from typing import Tuple
 from copy import deepcopy
 
 
@@ -47,37 +49,50 @@ class Solver(object):
         return possibilities
 
     @classmethod
-    def parse_sudoku_text(cls, sudoku_text: List[str]):
-        sudoku_seed = [["0" for _ in range(9)] for _ in range(9)]
+    def parse_sudoku_text(cls, sudoku_text: List[str]) -> Dict[Tuple, str]:
+        """Parses a textual representation of a sudoku grid into this class's canonical representation"""
+        sudoku = {}
         for row_index in range(9):
             row = sudoku_text[row_index].rstrip()
             for col_index in range(9):
                 if row[col_index] != "0":
-                    sudoku_seed[row_index][col_index] = row[col_index]
-        return sudoku_seed
+                    sudoku[(row_index, col_index)] = row[col_index]
+        return sudoku
 
     def __init__(self, sudoku_seed: List[List[Set[str]]] = None, sudoku_seed_text: List[str] = None):
         if sudoku_seed is None:
             # sudoku_seed_text must not be none if sudoku_seed is None
-            self.sudoku_seed = Solver.parse_sudoku_text(sudoku_seed_text)
-        self.possibilities = Solver.generate_possibilities()
+            self.sudoku = Solver.parse_sudoku_text(sudoku_seed_text)
 
     def print_sudoku(self, solution=None):
         if solution is None:
-            solution = self.sudoku_seed
-        for row in solution:
-            print(row)
+            solution = self.sudoku
+        for row in range(9):
+            for col in range(9):
+                if (row, col) not in solution:
+                    print("0", end="")
+                else:
+                    print(solution[(row, col)], end="")
+            print()
 
     @classmethod
     def is_solved(cls, solution):
-        for row in solution:
-            for element in row:
-                if element is "0":
-                    return False
-        return True
+        if len(solution) > 81:
+            for row in range(9):
+                for col in range(9):
+                    if (row, col) not in solution:
+                        print("0", end="")
+                    else:
+                        print(solution[(row, col)], end="")
+
+        return len(solution) >= 81
 
     @classmethod
-    def search(cls, possibilities, solution):
+    def search(cls, possibilities, solution: Dict[Tuple, str]):
+        """Enumerate the possibilities of the Sudoku until a successful solution is found"""
+        if cls.is_solved(solution):
+            return solution
+
         most_deducted_square = cls.get_square_with_least_possibilities(possibilities, solution)
         # for each possibility for this square
         for possibility in most_deducted_square[2]:
@@ -85,82 +100,82 @@ class Solver(object):
                 # and eliminate the other possibilities
                 solution_copy = deepcopy(solution)
                 possibilities_copy = deepcopy(possibilities)
-                # print("search path")
-                # for r in solution_copy:
-                #     print(r)
-                # print(most_deducted_square)
-                # print(possibility)
-                # print("------")
+
                 cls.assign(most_deducted_square[0], most_deducted_square[1], possibility, possibilities_copy,
                            solution_copy)
-                if cls.is_solved(solution_copy):
-                    return solution_copy
-                else:
-                    return cls.search(possibilities_copy, solution_copy)
+
+                return cls.search(possibilities_copy, solution_copy)
             except ValueError:
                 continue
-        # print("end of search")
-        # print(most_deducted_square)
-        # print(most_deducted_square[2])
-        # print("----")
         raise ValueError
 
     @classmethod
-    def assign(cls, row, col, element, possibilities: List[List[Set[str]]], solution):
+    def assign(cls, row, col, element, possibilities: List[List[Set[str]]], solution: Dict[Tuple, str]):
+        """Assign element to the solution at the specified row and col and eliminate other possibilities."""
         # assign the digit as the solution
-        solution[row][col] = element
+        solution[(row, col)] = element
         # eliminate the rest of the digits from possibilities
         digits_to_discard = possibilities[row][col].difference({element})
         for digit in digits_to_discard:
             cls.eliminate(row, col, digit, possibilities, solution)
 
     def solve(self):
-        for row in range(9):
-            for col in range(9):
-                if self.sudoku_seed[row][col] != "0":
-                    self.assign(row, col, self.sudoku_seed[row][col], self.possibilities, self.sudoku_seed)
-        if not self.is_solved(self.sudoku_seed):
+        possibilities = self.generate_possibilities()
+        keys = set(self.sudoku.keys())
+        for square in keys:
+            self.assign(square[0], square[1], self.sudoku[square], possibilities, self.sudoku)
+
+        if not self.is_solved(self.sudoku):
             # get square with least possibilities greater than 1
-            self.sudoku_seed = self.search(deepcopy(self.possibilities), deepcopy(self.sudoku_seed))
+            self.sudoku = self.search(possibilities, self.sudoku)
 
     @classmethod
-    def get_square_with_least_possibilities(cls, possibilities, solution):
+    def get_square_with_least_possibilities(cls, possibilities, solution: Dict[Tuple, str]):
         square_least_possibilities = tuple()
         least_possibilities = 10
         for row in range(9):
             for col in range(9):
-                if solution[row][col] == "0":
-                    if len(possibilities[row][col]) < least_possibilities:
-                        square_least_possibilities = (row, col, possibilities[row][col].copy())
-                        least_possibilities = len(possibilities[row][col])
+                if (row, col) not in solution and len(possibilities[row][col]) < least_possibilities:
+                    square_least_possibilities = (row, col, possibilities[row][col].copy())
+                    least_possibilities = len(possibilities[row][col])
         return square_least_possibilities
 
     @classmethod
     def eliminate(cls, row, col, element, possibilities, solution):
+        """Eliminate the specified digit from the specified square in the sudoku.
+
+        This method also propagates the effect of eliminating this digit from the possibilities in the square"""
+        # element was already discarded from possibilities[row][col
         if element not in possibilities[row][col]:
             return
 
         possibilities[row][col].discard(element)
 
+        # A contradiction occurred if the last possibility is no longer possible
         if len(possibilities[row][col]) == 0:
             raise ValueError
 
+        neighbors, neighborhoods = Solver.neighbors[(row, col)]
+
+        # If this square must contain the leftover digit , eliminate this digit from this square's neighbors
         if len(possibilities[row][col]) == 1:
-            neighbors, _ = Solver.neighbors[(row, col)]
             for neighbor in neighbors:
                 cls.eliminate(neighbor[0], neighbor[1], min(possibilities[row][col]), possibilities, solution)
 
-        _, neighborhoods = Solver.neighbors[(row, col)]
+        # In each of the neighbhorhoods of this square, check if there's a square that must necessarily contain
+        # the digit just eliminated from this square.
         for neighborhood in neighborhoods:
-            remaining_squares_for_element = []
+            possible_squares_for_element = []
             for neighbor_row, neighbor_col in neighborhood:
                 if element in possibilities[neighbor_row][neighbor_col]:
-                    remaining_squares_for_element.append((neighbor_row, neighbor_col))
-            if len(remaining_squares_for_element) == 0:
+                    possible_squares_for_element.append((neighbor_row, neighbor_col))
+            # a contradiction has occurred if no one else in the neighborhood could have this digit
+            if len(possible_squares_for_element) == 0:
                 raise ValueError
-            if len(remaining_squares_for_element) == 1:
-                square_for_element = remaining_squares_for_element[0]
-                solution[square_for_element[0]][square_for_element[1]] = element
+            # if only one other square in the neighborhood can contain the digit, then that square must contain it
+            if len(possible_squares_for_element) == 1:
+                square_for_element = possible_squares_for_element[0]
+                solution[(square_for_element[0], square_for_element[1])] = element
                 cls.assign(square_for_element[0], square_for_element[1], element, possibilities, solution)
 
 
@@ -184,8 +199,8 @@ def main():
             print()
             sudoku_solver.solve()
             sudoku_solver.print_sudoku()
-            first_three_digits = sudoku_solver.sudoku_seed[0][0] + sudoku_solver.sudoku_seed[0][1] + \
-                                 sudoku_solver.sudoku_seed[0][2]
+            first_three_digits = sudoku_solver.sudoku[(0, 0)] + sudoku_solver.sudoku[(0, 1)] + \
+                                  sudoku_solver.sudoku[(0, 2)]
             three_digit_number = int(first_three_digits)
             sum_of_first_three_digits += three_digit_number
             print()
