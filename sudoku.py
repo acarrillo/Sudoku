@@ -6,7 +6,12 @@ from typing import Tuple
 from copy import deepcopy
 
 
-class Solver(object):
+class Sudoku(object):
+    def __init__(self, sudoku_seed: List[List[Set[str]]] = None, sudoku_seed_text: List[str] = None):
+        if sudoku_seed is None:
+            # sudoku_seed_text must not be none if sudoku_seed is None
+            self.sudoku = Sudoku.parse_sudoku_text(sudoku_seed_text)
+
     @classmethod
     def find_neighbors(cls, row: int, col: int):
         """Maps a coordinate in a Sudoku grid to that coordinate's neighbors.
@@ -59,10 +64,7 @@ class Solver(object):
                     sudoku[(row_index, col_index)] = row[col_index]
         return sudoku
 
-    def __init__(self, sudoku_seed: List[List[Set[str]]] = None, sudoku_seed_text: List[str] = None):
-        if sudoku_seed is None:
-            # sudoku_seed_text must not be none if sudoku_seed is None
-            self.sudoku = Solver.parse_sudoku_text(sudoku_seed_text)
+
 
     def print_sudoku(self, solution=None):
         if solution is None:
@@ -155,7 +157,7 @@ class Solver(object):
         if len(possibilities[row][col]) == 0:
             raise ValueError
 
-        neighbors, neighborhoods = Solver.neighbors[(row, col)]
+        neighbors, neighborhoods = Sudoku.neighbors[(row, col)]
 
         # If this square must contain the leftover digit , eliminate this digit from this square's neighbors
         if len(possibilities[row][col]) == 1:
@@ -180,7 +182,7 @@ class Solver(object):
 
 
 # define neighbors here because the class Solver can't be resolved if we're still in the middle of defining the class
-Solver.neighbors = {key: Solver.find_neighbors(*key) for key in Solver.all_row_col_combinations}
+Sudoku.neighbors = {key: Sudoku.find_neighbors(*key) for key in Sudoku.all_row_col_combinations}
 
 
 def main():
@@ -194,7 +196,7 @@ def main():
             for _ in range(9):
                 rows.append(sudoku_file.readline().rstrip())
             print(sudoku_id)
-            sudoku_solver = Solver(sudoku_seed_text=rows)
+            sudoku_solver = Sudoku(sudoku_seed_text=rows)
             sudoku_solver.print_sudoku()
             print()
             sudoku_solver.solve()
