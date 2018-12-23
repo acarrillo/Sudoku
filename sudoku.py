@@ -7,10 +7,63 @@ from copy import deepcopy
 
 
 class Sudoku(object):
-    def __init__(self, sudoku_seed: List[List[Set[str]]] = None, sudoku_seed_text: List[str] = None):
-        if sudoku_seed is None:
-            # sudoku_seed_text must not be none if sudoku_seed is None
-            self.sudoku = Sudoku.parse_sudoku_text(sudoku_seed_text)
+    def __repr__(self):
+        """Returns the current state of the Sudoku"""
+        grid_digits = []
+        for row in range(9):
+            for col in range(9):
+                if (row, col) not in self.sudoku:
+                    grid_digits.append("0")
+                else:
+                    grid_digits.append(self.sudoku[(row, col)])
+        grid_output = "".join(grid_digits)
+        sudoku_output = "Sudoku(raw_text=\"{}\")>".format(grid_output)
+        return sudoku_output
+
+    def __str__(self):
+        """Returns the current state of the Sudoku grid as nine rows of nine digits.
+
+        '0' represents an unsolved square
+        """
+        grid_digits = []
+        for row in range(9):
+            for col in range(9):
+                if (row, col) not in self.sudoku:
+                    grid_digits.append("0")
+                else:
+                    grid_digits.append(self.sudoku[(row, col)])
+            grid_digits.append("\n")
+        grid_output = "".join(grid_digits)
+        return grid_output
+
+    def __init__(self, raw_text: str):
+        """Take in a string of at least 81 non-whitespace characters to parse as a Sudoku"""
+        self.initial = Sudoku.parse_sudoku_text(raw_text)
+        self.sudoku = deepcopy(self.initial)
+
+    @classmethod
+    def parse_sudoku_text(cls, sudoku_text: str) -> Dict[Tuple, str]:
+        """Parses a textual representation of a Sudoku grid into this class's canonical representation"""
+        sudoku = {}
+        # remove all whitespace
+        sudoku_text = "".join(sudoku_text.split())
+
+        # input should have at least 81 characters that are only from '0' to '9'
+        if len(sudoku_text) != 81:
+            raise ValueError("Input should have at least 81 non-whitespace characters")
+        try:
+            sudoku_text.encode("ascii")
+        except UnicodeEncodeError:
+            raise ValueError("Non-whitespace characters in input should only be characters from '0' to '9'")
+        if not sudoku_text.isdecimal():
+            raise ValueError("Non-whitespace characters in input should only be characters from '0' to '9'")
+
+        for row_index in range(9):
+            for col_index in range(9):
+                current_digit = sudoku_text[row_index * 9 + col_index]
+                if current_digit != "0":
+                    sudoku[(row_index, col_index)] = current_digit
+        return sudoku
 
     @classmethod
     def find_neighbors(cls, row: int, col: int):
@@ -52,30 +105,6 @@ class Sudoku(object):
             for col_index in range(9):
                 possibilities[row_index].append(all_possibilities.copy())
         return possibilities
-
-    @classmethod
-    def parse_sudoku_text(cls, sudoku_text: List[str]) -> Dict[Tuple, str]:
-        """Parses a textual representation of a sudoku grid into this class's canonical representation"""
-        sudoku = {}
-        for row_index in range(9):
-            row = sudoku_text[row_index].rstrip()
-            for col_index in range(9):
-                if row[col_index] != "0":
-                    sudoku[(row_index, col_index)] = row[col_index]
-        return sudoku
-
-
-
-    def print_sudoku(self, solution=None):
-        if solution is None:
-            solution = self.sudoku
-        for row in range(9):
-            for col in range(9):
-                if (row, col) not in solution:
-                    print("0", end="")
-                else:
-                    print(solution[(row, col)], end="")
-            print()
 
     @classmethod
     def is_solved(cls, solution):
@@ -192,15 +221,15 @@ def main():
             # Store the identifier of this sudoku for output
             sudoku_id = line.rstrip()
             # Parse the next 9 lines as sudoku
-            rows = []
+            raw_text = ""
             for _ in range(9):
-                rows.append(sudoku_file.readline().rstrip())
+                raw_text += (sudoku_file.readline().rstrip())
             print(sudoku_id)
-            sudoku_solver = Sudoku(sudoku_seed_text=rows)
-            sudoku_solver.print_sudoku()
+            sudoku_solver = Sudoku(raw_text=raw_text)
+            print(str(sudoku_solver))
             print()
             sudoku_solver.solve()
-            sudoku_solver.print_sudoku()
+            print(str(sudoku_solver))
             first_three_digits = sudoku_solver.sudoku[(0, 0)] + sudoku_solver.sudoku[(0, 1)] + \
                                   sudoku_solver.sudoku[(0, 2)]
             three_digit_number = int(first_three_digits)
