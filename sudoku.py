@@ -48,15 +48,15 @@ class Sudoku(object):
         # remove all whitespace
         sudoku_text = "".join(sudoku_text.split())
 
-        # input should have at least 81 characters that are only from '0' to '9'
-        if len(sudoku_text) != 81:
-            raise ValueError("Input should have at least 81 non-whitespace characters")
+        # input should have 81 characters that are only from '0' to '9'
+        if not sudoku_text.isdecimal():
+            raise ValueError("Non-whitespace characters in input should only be characters from '0' to '9'")
         try:
             sudoku_text.encode("ascii")
         except UnicodeEncodeError:
             raise ValueError("Non-whitespace characters in input should only be characters from '0' to '9'")
-        if not sudoku_text.isdecimal():
-            raise ValueError("Non-whitespace characters in input should only be characters from '0' to '9'")
+        if len(sudoku_text) != 81:
+            raise ValueError("Input should have 81 non-whitespace characters")
 
         for row_index in range(9):
             for col_index in range(9):
