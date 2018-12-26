@@ -41,6 +41,16 @@ all_row_col_combinations = [(row, col) for row in range(9) for col in range(9)]
 
 
 class Sudoku(object):
+    """Represents a Sudoku grid.
+
+    After creating an instance of Sudoku, it can be solved by calling solve().
+    Get a representation of the Sudoku by using the builtin str().
+
+    A sample use case:
+    sudoku = Sudoku(raw_text="...")
+    sudoku.solve()
+    solution = str(sudoku)
+    """
     def __repr__(self):
         """Returns the current state of the Sudoku"""
         grid_digits = []
@@ -72,16 +82,17 @@ class Sudoku(object):
 
     def __init__(self, raw_text: str):
         """Take in a string of at least 81 non-whitespace characters to parse as a Sudoku"""
-        self.initial = Sudoku.parse_sudoku_text(raw_text)
-        self.sudoku = deepcopy(self.initial)
+        self.initial = Sudoku.clean_raw_text(raw_text)
+        self.sudoku = Sudoku.parse_sudoku_text(self.initial)
 
     @staticmethod
-    def parse_sudoku_text(sudoku_text: str) -> Dict[Tuple, str]:
-        """Parses a textual representation of a Sudoku grid into this class's canonical representation"""
-        sudoku = {}
-        # remove all whitespace
-        sudoku_text = "".join(sudoku_text.split())
+    def clean_raw_text(raw_text: str) -> str:
+        """Removes  all whitespace from raw_text and checks to ensure that all characters are digits.
 
+        Raises ValueError if raw_text does not contain only 81 digits and whitespace
+        """
+        # remove all whitespace
+        sudoku_text = "".join(raw_text.split())
         # input should have 81 characters that are only from '0' to '9'
         if not sudoku_text.isdecimal():
             raise ValueError("Non-whitespace characters in input should only be characters from '0' to '9'")
@@ -91,7 +102,12 @@ class Sudoku(object):
             raise ValueError("Non-whitespace characters in input should only be characters from '0' to '9'")
         if len(sudoku_text) != 81:
             raise ValueError("Input should have 81 non-whitespace characters")
+        return sudoku_text
 
+    @staticmethod
+    def parse_sudoku_text(sudoku_text: str) -> Dict[Tuple, str]:
+        """Parses a textual representation of a Sudoku grid into this class's canonical representation"""
+        sudoku = {}
         for row_index in range(9):
             for col_index in range(9):
                 current_digit = sudoku_text[row_index * 9 + col_index]
@@ -221,6 +237,3 @@ class Sudoku(object):
 
     # Stores the neighbors and neighborhoods of a given coordinate in a Sudoku grid
     neighbors = {key: find_neighbors(*key) for key in all_row_col_combinations}
-
-# define neighbors here because the class Solver can't be resolved if we're still in the middle of defining the class
-# Sudoku.neighbors = {key: Sudoku.find_neighbors(*key) for key in Sudoku.all_row_col_combinations}
