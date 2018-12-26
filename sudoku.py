@@ -51,6 +51,7 @@ class Sudoku(object):
     sudoku.solve()
     solution = str(sudoku)
     """
+
     def __repr__(self):
         """Returns the current state of the Sudoku"""
         grid_digits = []
@@ -117,6 +118,8 @@ class Sudoku(object):
 
     def solve(self):
         """Solve the Sudoku"""
+        if Sudoku.is_solved(self.sudoku):
+            return
         possibilities = Sudoku.generate_initial_possibilities()
         # More squares will be filled in as we assign each hinted square and deduce the other squares, and
         # more keys will be added to self.sudoku. We can't iterate through an iterable that changes, so copy the keys
@@ -207,7 +210,7 @@ class Sudoku(object):
 
                 # ...assign the possibility and eliminate the other possibilities
                 Sudoku.assign(most_deducted_square[0], most_deducted_square[1], possibility, possibilities_copy,
-                           solution_copy)
+                              solution_copy)
                 return Sudoku.search(possibilities_copy, solution_copy)
             except ValueError:
                 # If a contradiction has occurred, move on and try the next possibility
