@@ -1,7 +1,9 @@
-from typing import List
-from typing import Set
-from typing import Dict
-from typing import Tuple
+from typing import (
+    List,
+    Set,
+    Dict,
+    Tuple
+)
 from copy import deepcopy
 
 
